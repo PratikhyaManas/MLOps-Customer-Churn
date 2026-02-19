@@ -629,23 +629,4 @@ drift = DataDriftDetector.calculate_statistical_drift(
 - Follow code style (enforced by Ruff)
 - Pass all CI/CD checks
 
-## 📝 License
 
-This project is licensed under the MIT License - see LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by MLOps Credit Default template
-- Built on Databricks, MLflow, and LightGBM
-- Community contributions and feedback
-
-## 📧 Support
-
-For issues, questions, or feedback:
-1. Check existing GitHub issues
-2. Open a new issue with detailed description
-3. Contact team via email (see CODEOWNERS)
-
----
-
-⭐ **Star this repo if you find it helpful!**
