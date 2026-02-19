@@ -1,12 +1,6 @@
 ## MLOps Customer Churn Prediction 🎯
 
-<p align="center">
-<img width="737" alt="cover" src="https://github.com/user-attachments/assets/a1c18fba-9e39-45b5-8fcd-bceb1f5f5af9">
-</p>
-
 This is a comprehensive MLOps project for customer churn prediction built on Databricks. The project demonstrates end-to-end machine learning operations including data engineering, model training, deployment, monitoring, and CI/CD automation.
-
-**Inspired by the credit default prediction MLOps template, this project adapts the same robust architecture for customer churn use cases.**
 
 ## 🎯 Project Overview
 
