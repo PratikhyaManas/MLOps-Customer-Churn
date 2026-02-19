@@ -1,0 +1,105 @@
+catalog_name: churn
+schema_name: default
+pipeline_id: to_be_created # Pipeline Id under "features_balanced_online" table in catalog. Created in model_serving_feat_lookup_notebook.py
+
+
+parameters:
+  learning_rate: 0.05
+  random_state: 42
+  force_col_wise: true
+
+ab_test:
+  learning_rate_a: 0.05
+  learning_rate_b: 0.1
+  force_col_wise: true
+
+num_features:
+  - name: customer_id
+    dtype: int64
+  - name: tenure
+    dtype: int64
+  - name: monthly_charges
+    dtype: float64
+  - name: total_charges
+    dtype: float64
+  - name: contract_type
+    dtype: int64
+  - name: payment_method
+    dtype: int64
+  - name: internet_service
+    dtype: int64
+  - name: online_security
+    dtype: int64
+  - name: online_backup
+    dtype: int64
+  - name: device_protection
+    dtype: int64
+  - name: tech_support
+    dtype: int64
+  - name: streaming_tv
+    dtype: int64
+  - name: streaming_movies
+    dtype: int64
+  - name: paperless_billing
+    dtype: int64
+  - name: senior_citizen
+    dtype: int64
+  - name: partner
+    dtype: int64
+  - name: dependents
+    dtype: int64
+  - name: phone_service
+    dtype: int64
+  - name: multiple_lines
+    dtype: int64
+  - name: gender
+    dtype: int64
+
+target:
+  - name: churn
+    dtype: int64
+    new_name: churn_label
+
+features:
+  clean:
+    - customer_id
+    - tenure
+    - monthly_charges
+    - total_charges
+    - contract_type
+    - payment_method
+    - internet_service
+    - online_security
+    - online_backup
+    - device_protection
+    - tech_support
+    - streaming_tv
+    - streaming_movies
+    - paperless_billing
+    - senior_citizen
+    - partner
+    - dependents
+    - phone_service
+    - multiple_lines
+    - gender
+  robust:
+    - customer_id
+    - tenure_robust
+    - monthly_charges_robust
+    - total_charges_robust
+    - contract_type
+    - payment_method
+    - internet_service
+    - online_security
+    - online_backup
+    - device_protection
+    - tech_support
+    - streaming_tv
+    - streaming_movies
+    - paperless_billing
+    - senior_citizen
+    - partner
+    - dependents
+    - phone_service
+    - multiple_lines
+    - gender

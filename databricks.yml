@@ -1,0 +1,197 @@
+# This is a Databricks asset bundle definition
+# The Databricks extension requires databricks.yml configuration file.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+
+bundle:
+  name: mlops-databricks-customer-churn
+  description: "Production-ready MLOps pipeline for customer churn prediction"
+
+# Production deployments must run as a service principal
+# Set via environment variable: DATABRICKS_SERVICE_PRINCIPAL_NAME or DATABRICKS_SERVICE_PRINCIPAL_ID
+run_as:
+  service_principal_name: ${env.DATABRICKS_SERVICE_PRINCIPAL_NAME}
+
+include:
+  - bundle_monitoring.yml
+
+# These are the default artifact settings
+artifacts:
+  default:
+    type: whl
+    build: uv build
+    path: .
+
+# Custom variables for use throughout the bundle
+variables:
+  root_path:
+    description: root_path for the bundle files
+    default: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+  git_sha:
+    description: git_sha from CI/CD pipeline
+    default: ${env.GIT_SHA}
+  schedule_pause_status:
+    description: schedule pause status (PAUSED or UNPAUSED)
+    default: UNPAUSED
+  environment:
+    description: deployment environment (dev, staging, prod)
+    default: ${env.ENVIRONMENT}
+  log_level:
+    description: logging level (DEBUG, INFO, WARNING, ERROR)
+    default: INFO
+
+# Default job and pipeline settings
+resources:
+  jobs:
+    customer-churn:
+      name: customer-churn-workflow
+      schedule:
+        quartz_cron_expression: "0 0 6 ? * MON"
+        timezone_id: "Europe/Amsterdam"
+        pause_status: ${var.schedule_pause_status}
+      tags:
+        project_name: "customer-churn"
+      job_clusters:
+        - job_cluster_key: "customer-churn-cluster"
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            data_security_mode: "SINGLE_USER"
+            node_type_id: "i3.xlarge"
+            driver_node_type_id: "i3.xlarge"
+            autoscale:
+              min_workers: 1
+              max_workers: 1
+
+      tasks:
+
+        - task_key: "preprocessing"
+          job_cluster_key: "customer-churn-cluster"
+          spark_python_task:
+            python_file: "workflows/preprocess.py"
+            parameters:
+              - "--root_path"
+              - ${var.root_path}
+          libraries:
+           - whl: ./dist/*.whl
+
+        - task_key: if_refreshed
+          condition_task:
+            op: "EQUAL_TO"
+            left: "{{tasks.preprocessing.values.refreshed}}"
+            right: "1"
+          depends_on:
+            - task_key: "preprocessing"
+
+        - task_key: "train_model"
+          depends_on:
+            - task_key: "if_refreshed"
+              outcome: "true"
+          job_cluster_key: "customer-churn-cluster"
+          spark_python_task:
+            python_file: "workflows/train_model.py"
+            parameters:
+              - "--root_path"
+              - ${var.root_path}
+              - "--git_sha"
+              - ${var.git_sha}
+              - "--job_run_id"
+              - "{{job.id}}"
+          libraries:
+            - whl: ./dist/*.whl
+
+        - task_key: "evaluate_model"
+          depends_on:
+            - task_key: "train_model"
+          job_cluster_key: "customer-churn-cluster"
+          spark_python_task:
+            python_file: "workflows/evaluate_model.py"
+            parameters:
+              - "--root_path"
+              - ${var.root_path}
+              - "--git_sha"
+              - ${var.git_sha}
+              - "--job_run_id"
+              - "{{job.id}}"
+          libraries:
+            - whl: ./dist/*.whl
+
+        - task_key: "deploy_model"
+          depends_on:
+            - task_key: "evaluate_model"
+          job_cluster_key: "customer-churn-cluster"
+          spark_python_task:
+            python_file: "workflows/deploy_model.py"
+            parameters:
+              - "--root_path"
+              - ${var.root_path}
+              - "--git_sha"
+              - ${var.git_sha}
+              - "--job_run_id"
+              - "{{job.id}}"
+          libraries:
+            - whl: ./dist/*.whl
+
+# Define targets for different environments
+targets:
+  dev:
+    default: true
+    mode: development
+    variables:
+      schedule_pause_status: "PAUSED"
+      environment: "dev"
+    workspace:
+      host: ${env.DATABRICKS_HOST}
+      # Optional: Override service principal for dev
+      # No run_as required for dev mode
+
+  staging:
+    mode: development
+    variables:
+      schedule_pause_status: "UNPAUSED"
+      environment: "staging"
+    workspace:
+      host: ${env.DATABRICKS_HOST}
+    # Same service principal as prod
+    run_as:
+      service_principal_name: ${env.DATABRICKS_SERVICE_PRINCIPAL_NAME}
+
+  prod:
+    mode: production
+    variables:
+      schedule_pause_status: "UNPAUSED"
+      environment: "prod"
+      log_level: "INFO"
+    workspace:
+      host: ${env.DATABRICKS_HOST}
+    # Production requires service principal
+    run_as:
+      service_principal_name: ${env.DATABRICKS_SERVICE_PRINCIPAL_NAME}
+    
+    # Production-specific job configuration
+    resources:
+      jobs:
+        customer-churn:
+          # Production job overrides
+          max_concurrent_runs: 1  # Prevent parallel executions
+          timeout_seconds: 14400  # 4-hour timeout
+          health:
+            rules:
+              - condition: "NOT_RUNNING"
+                evaluation_window: 60  # 1 hour
+          on_failure:
+            email_notifications:
+              on_failure:
+                - ${env.ALERT_EMAIL}
+          tasks:
+            - task_key: "preprocessing"
+              # Add retry policy for production
+              max_retries: 2
+              min_retry_interval_millis: 60000
+
+            - task_key: "train_model"
+              max_retries: 1
+              
+            - task_key: "evaluate_model"
+              max_retries: 1
+              
+            - task_key: "deploy_model"
+              max_retries: 0  # No retries for deployment
