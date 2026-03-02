@@ -1,8 +1,8 @@
-## MLOps Customer Churn Prediction 🎯
+## MLOps Customer Churn Prediction
 
 This is a comprehensive MLOps project for customer churn prediction built on Databricks. The project demonstrates end-to-end machine learning operations including data engineering, model training, deployment, monitoring, and CI/CD automation.
 
-## 🎯 Project Overview
+## Project Overview
 
 Customer churn (customer attrition) is when customers stop doing business with a company. This project predicts which customers are likely to churn, enabling proactive retention strategies.
 
@@ -19,7 +19,7 @@ Customer churn (customer attrition) is when customers stop doing business with a
 - Data validation and quality checks
 - Health monitoring and safeguards
 
-## 🛠 Tech Stack
+## Tech Stack
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Databricks](https://img.shields.io/badge/Databricks-FF3621?style=for-the-badge&logo=Databricks&logoColor=white)
@@ -30,7 +30,7 @@ Customer churn (customer attrition) is when customers stop doing business with a
 ![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?style=for-the-badge&logo=numpy&logoColor=white)
 ![Git](https://img.shields.io/badge/git-%23F05033.svg?style=for-the-badge&logo=git&logoColor=white)
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 mlops-databricks-customer-churn/
@@ -74,7 +74,7 @@ mlops-databricks-customer-churn/
 └── README.md
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -123,7 +123,7 @@ data/WA_Fn-UseC_-Telco-Customer-Churn.csv
 
 Update data paths in `src/customer_churn/data_*.py` files if needed.
 
-## 🧪 Testing & Code Quality
+## Testing & Code Quality
 
 ### Running Tests
 
@@ -179,7 +179,7 @@ Smoke tests validate deployment health:
 pytest tests/test_smoke.py -v
 ```
 
-## 🔄 MLOps Workflow
+## MLOps Workflow
 
 ### 1. Data Preprocessing (`workflows/preprocess.py`)
 - Load source data from Databricks catalog
@@ -218,7 +218,7 @@ pytest tests/test_smoke.py -v
 - Alert on anomalies
 - Update inference tables
 
-## 📊 Data & Features
+## Data & Features
 
 ### Dataset
 
@@ -258,7 +258,7 @@ validator.validate_data_quality(
 )
 ```
 
-## 🤖 Model & Performance
+## Model & Performance
 
 ### Model Configuration
 
@@ -287,7 +287,7 @@ Top features for churn prediction:
 4. Internet service selection
 5. Tech support availability
 
-## 🔐 Production Deployment
+## Production Deployment
 
 ### Configuration Management
 
@@ -357,7 +357,7 @@ Create a service principal in Databricks:
    GRANT USE_SCHEMA ON SCHEMA churn.default TO `<client-id>`;
    ```
 
-## 🔄 CI/CD with GitHub Actions
+## CI/CD with GitHub Actions
 
 ### Workflow Overview
 
@@ -432,7 +432,7 @@ on:
 - Check service principal has required permissions
 - Ensure no workspace/job name conflicts
 
-## 🛡️ Production Safeguards
+## Production Safeguards
 
 ### Pre-Deployment Validation
 
@@ -499,7 +499,7 @@ manager = SecretsManager()
 token = manager.get_secret("DATABRICKS_TOKEN", required=True)
 ```
 
-## 🔍 Error Handling & Logging
+## Error Handling & Logging
 
 ### Enhanced Error Handling
 
@@ -533,7 +533,7 @@ setup_logging(
 )
 ```
 
-## 📚 Available Modules
+## Available Modules
 
 ### Core Modules
 
@@ -571,7 +571,7 @@ validator = DeploymentValidator()
 validator.validate_all()
 ```
 
-## 🚨 Monitoring & Alerts
+## Monitoring & Alerts
 
 ### Built-in Alerts
 
@@ -604,7 +604,7 @@ drift = DataDriftDetector.calculate_statistical_drift(
 )
 ```
 
-## 🤝 Contributing
+## Contributing
 
 ### Development Workflow
 
