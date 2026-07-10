@@ -1,7 +1,7 @@
 """Secrets management utilities for production deployments."""
 
 import os
-from typing import Any, Optional
+from typing import Optional
 
 from loguru import logger
 
@@ -9,7 +9,7 @@ from loguru import logger
 class SecretsManager:
     """
     Manages secure handling of secrets and sensitive configuration.
-    
+
     Supports both environment variables and Databricks Secrets API.
     """
 
@@ -169,7 +169,7 @@ class SecretsManager:
     def create_databricks_secret(scope: str, key: str, value: str) -> bool:
         """
         Create a secret in Databricks Secrets.
-        
+
         Requires appropriate permissions and Databricks SDK.
 
         Args:
@@ -195,7 +195,7 @@ class SecretsManager:
     def create_databricks_secret_scope(scope: str) -> bool:
         """
         Create a secret scope in Databricks.
-        
+
         Requires appropriate permissions and Databricks SDK.
 
         Args:
@@ -253,7 +253,7 @@ def validate_environment() -> bool:
     logger.info(f"✅ All {len(REQUIRED_PRODUCTION_ENV_VARS)} required environment variables set")
 
     # Log optional vars status
-    for var, description in OPTIONAL_PRODUCTION_ENV_VARS.items():
+    for var, _description in OPTIONAL_PRODUCTION_ENV_VARS.items():
         if os.environ.get(var):
             logger.info(f"✅ Optional environment variable set: {var}")
         else:

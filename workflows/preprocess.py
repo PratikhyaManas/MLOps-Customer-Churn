@@ -18,46 +18,37 @@ Workflow:
 6. Set a task value indicating whether new data was processed
 """
 
-import argparse
 import sys
 import time
-import traceback
-from typing import Optional
 
-from databricks.sdk import WorkspaceClient
 from databricks.sdk.core import OperationTimeoutError
 from loguru import logger
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 from pyspark.sql.functions import max as spark_max
 
-from customer_churn.utils import load_config, setup_logging
+from customer_churn.utils import setup_logging
+from customer_churn.workflow_common import (
+    load_workflow_context,
+    log_workflow_failure,
+    parse_common_args,
+    set_task_value_safe,
+)
 
 # Set up logging
 setup_logging(log_file="")
 
 try:
     # Parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root_path", action="store", default=None, type=str, required=True)
-
-    args = parser.parse_args()
+    args = parse_common_args()
     root_path = args.root_path
     logger.info("Parsed arguments successfully.")
 
     # Load configuration
     logger.info("Loading configuration...")
-    config_path = f"{root_path}/project_config.yml"
-    config = load_config(config_path)
+    config, workspace, spark = load_workflow_context(root_path)
     logger.info("Configuration loaded successfully.")
 
-    # Initialize Databricks workspace client
-    workspace = WorkspaceClient()
-    logger.info("Databricks workspace client initialized.")
-
-    # Initialize Spark session
-    spark = SparkSession.builder.getOrCreate()
-    logger.info("Spark session initialized.")
+    logger.info("Databricks workspace client and Spark session initialized.")
 
     # Extract configuration details
     pipeline_id = config.pipeline_id
@@ -135,30 +126,25 @@ try:
             time.sleep(10)
 
         # Set task value for workflow coordination
-        dbutils.jobs.taskValues.set(key="refreshed", value=1)
+        set_task_value_safe(key="refreshed", value=1)
         logger.info("Data preprocessing completed successfully. Task value set to 1.")
     else:
         logger.info("No new data to process.")
-        dbutils.jobs.taskValues.set(key="refreshed", value=0)
+        set_task_value_safe(key="refreshed", value=0)
         logger.info("Task value set to 0 (no refresh needed).")
 
 except FileNotFoundError as e:
     logger.error(f"Configuration file not found: {str(e)}")
-    logger.error(traceback.format_exc())
-    dbutils.jobs.taskValues.set(key="refreshed", value=0)
+    log_workflow_failure("preprocessing workflow", e, task_key="refreshed", task_value=0)
     sys.exit(1)
 except (KeyError, ValueError) as e:
     logger.error(f"Invalid configuration or data format: {str(e)}")
-    logger.error(traceback.format_exc())
-    dbutils.jobs.taskValues.set(key="refreshed", value=0)
+    log_workflow_failure("preprocessing workflow", e, task_key="refreshed", task_value=0)
     sys.exit(1)
 except OperationTimeoutError as e:
     logger.error(f"Pipeline operation timeout: {str(e)}")
-    logger.error(traceback.format_exc())
-    dbutils.jobs.taskValues.set(key="refreshed", value=0)
+    log_workflow_failure("preprocessing workflow", e, task_key="refreshed", task_value=0)
     sys.exit(1)
 except Exception as e:
-    logger.error(f"Unexpected error in preprocessing workflow: {type(e).__name__}: {str(e)}")
-    logger.error(f"Full traceback:\n{traceback.format_exc()}")
-    dbutils.jobs.taskValues.set(key="refreshed", value=0)
+    log_workflow_failure("preprocessing workflow", e, task_key="refreshed", task_value=0)
     sys.exit(1)

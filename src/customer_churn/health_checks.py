@@ -173,9 +173,9 @@ class HealthChecker:
             spark = SparkSession.builder.getOrCreate()
 
             # Run a simple test
-            test_result = spark.sql("SELECT 1 as test").collect()[0][0]
+            spark.sql("SELECT 1 as test").collect()[0][0]
 
-            logger.info(f"✅ Spark session available and functional")
+            logger.info("✅ Spark session available and functional")
             self.checks["spark_available"] = True
             return True
 

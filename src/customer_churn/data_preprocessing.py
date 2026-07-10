@@ -1,13 +1,11 @@
 import os
 from typing import Tuple
 
-import pandas as pd
 from dotenv import load_dotenv
 from loguru import logger
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import RobustScaler
 
 from customer_churn.data_cleaning import DataCleaning
+from customer_churn.preprocessing_common import create_preprocessor, extract_features_and_target, log_processed_shapes
 from customer_churn.utils import Config, load_config, setup_logging
 
 # Load environment variables
@@ -49,17 +47,11 @@ class DataPreprocessor:
             self.features_robust = config.features.robust
 
             # Define features and target
-            self.X = self.cleaned_data.drop(columns=[target.new_name for target in config.target])
-            self.y = self.cleaned_data[config.target[0].new_name]
+            self.X, self.y = extract_features_and_target(self.cleaned_data, config)
 
             # Set up the ColumnTransformer for scaling
             logger.info("Setting up ColumnTransformer for scaling")
-            self.preprocessor = ColumnTransformer(
-                transformers=[
-                    ("robust_scaler", RobustScaler(), self.features_robust)  # Apply RobustScaler to selected features
-                ],
-                remainder="passthrough",  # Keep other columns unchanged
-            )
+            self.preprocessor = create_preprocessor(self.features_robust)
         except KeyError as e:
             logger.error(f"KeyError encountered during initialization: {str(e)}")
             raise
@@ -79,10 +71,7 @@ class DataPreprocessor:
         """
         try:
             logger.info("Retrieving processed data and preprocessor")
-            logger.info(f"Feature columns in X: {self.X.columns.tolist()}")
-
-            # Log shapes of processed data
-            logger.info(f"Data preprocessing completed. Shape of X: {self.X.shape}, Shape of y: {self.y.shape}")
+            log_processed_shapes(self.X, self.y)
 
             return self.X, self.y, self.preprocessor
 

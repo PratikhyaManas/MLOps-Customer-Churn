@@ -6,10 +6,10 @@ import pandas as pd
 from databricks.connect import DatabricksSession
 from dotenv import load_dotenv
 from loguru import logger
-from pydantic import ValidationError
 from pyspark.sql import SparkSession
 
-from customer_churn.utils import Config, Target
+from customer_churn.cleaning_common import build_target_config, validate_required_columns
+from customer_churn.utils import Config
 
 # Load environment variables
 load_dotenv()
@@ -50,8 +50,7 @@ class DataCleaning:
 
     def _setup_target_config(self) -> None:
         """Sets up target configuration from config."""
-        target_info = self.config.target[0]
-        self.target_config = Target(name=target_info.name, dtype=target_info.dtype, new_name=target_info.new_name)
+        self.target_config = build_target_config(self.config)
 
     def _load_data(self, filepath: str) -> pd.DataFrame:
         """
@@ -82,10 +81,7 @@ class DataCleaning:
         Raises:
             Exception: If DataFrame validation fails
         """
-        columns_to_check = [feature.name for feature in self.config.num_features] + [self.target_config.name]
-        missing_columns = [col for col in columns_to_check if col not in self.df.columns]
-        if missing_columns:
-            raise Exception(f"Missing required columns: {', '.join(missing_columns)}")
+        validate_required_columns(self.df, self.config, self.target_config)
 
     def _validate_data_types(self) -> None:
         """Validates data types of key columns."""

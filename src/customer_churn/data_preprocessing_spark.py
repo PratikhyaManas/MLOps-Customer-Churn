@@ -6,10 +6,9 @@ from databricks.connect import DatabricksSession
 from dotenv import load_dotenv
 from loguru import logger
 from pyspark.sql import SparkSession
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import RobustScaler
 
 from customer_churn.data_cleaning_spark import DataCleaning
+from customer_churn.preprocessing_common import create_preprocessor, extract_features_and_target, log_processed_shapes
 from customer_churn.utils import Config
 
 # Load environment variables
@@ -53,17 +52,11 @@ class DataPreprocessor:
             self.features_robust = config.features.robust
 
             # Define features and target
-            self.X = self.cleaned_data.drop(columns=[target.new_name for target in config.target])
-            self.y = self.cleaned_data[config.target[0].new_name]
+            self.X, self.y = extract_features_and_target(self.cleaned_data, config)
 
             # Set up the ColumnTransformer for scaling
             logger.info("Setting up ColumnTransformer for scaling")
-            self.preprocessor = ColumnTransformer(
-                transformers=[
-                    ("robust_scaler", RobustScaler(), self.features_robust)
-                ],
-                remainder="passthrough",
-            )
+            self.preprocessor = create_preprocessor(self.features_robust)
         except Exception as e:
             logger.error(f"An error occurred during initialization: {str(e)}")
             raise
@@ -80,8 +73,7 @@ class DataPreprocessor:
         """
         try:
             logger.info("Retrieving processed data and preprocessor")
-            logger.info(f"Feature columns in X: {self.X.columns.tolist()}")
-            logger.info(f"Data preprocessing completed. Shape of X: {self.X.shape}, Shape of y: {self.y.shape}")
+            log_processed_shapes(self.X, self.y)
             return self.X, self.y, self.preprocessor
         except Exception as e:
             logger.error(f"An error occurred during data preprocessing: {str(e)}")

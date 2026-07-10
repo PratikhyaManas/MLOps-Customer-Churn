@@ -323,7 +323,7 @@ class SmokeTestRunner:
         try:
             from databricks import feature_engineering
 
-            fe = feature_engineering.FeatureEngineeringClient()
+            feature_engineering.FeatureEngineeringClient()
 
             # Test that feature table is accessible
             logger.info(f"✅ Feature lookup test passed for table: {feature_table}")

@@ -11,35 +11,33 @@ Key functionality:
 - Outputs model URI for downstream tasks
 """
 
-import argparse
 import sys
-import traceback
 
 import mlflow
 from databricks import feature_engineering
 from databricks.feature_engineering import FeatureLookup
-from databricks.sdk import WorkspaceClient
 from lightgbm import LGBMClassifier
 from loguru import logger
 from mlflow.models import infer_signature
-from pyspark.sql import SparkSession
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 
-from customer_churn.utils import load_config, setup_logging
+from customer_churn.utils import setup_logging
+from customer_churn.workflow_common import (
+    load_workflow_context,
+    log_workflow_failure,
+    parse_common_args,
+    set_task_value_safe,
+)
 
 # Set up logging
 setup_logging(log_file="")
 
 try:
     # Parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root_path", action="store", default=None, type=str, required=True)
-    parser.add_argument("--git_sha", action="store", default=None, type=str, required=True)
-    parser.add_argument("--job_run_id", action="store", default=None, type=str, required=True)
-    args = parser.parse_args()
+    args = parse_common_args(require_git_metadata=True)
 
     root_path = args.root_path
     git_sha = args.git_sha
@@ -50,18 +48,11 @@ try:
 
     # Load configuration
     logger.info("Loading configuration...")
-    config_path = f"{root_path}/project_config.yml"
-    config = load_config(config_path)
+    config, workspace, spark = load_workflow_context(root_path)
     logger.info("Configuration loaded successfully.")
 
-    # Initialize Databricks workspace client
-    workspace = WorkspaceClient()
-    logger.info("Databricks workspace client initialized.")
-
-    # Initialize Spark session
-    spark = SparkSession.builder.getOrCreate()
     fe = feature_engineering.FeatureEngineeringClient()
-    logger.info("Spark session and Feature Engineering client initialized.")
+    logger.info("Databricks clients initialized.")
 
     # Extract configuration details
     catalog_name = config.catalog_name
@@ -151,7 +142,7 @@ try:
 
         # Infer signature and log model
         signature = infer_signature(X_train, y_train)
-        
+
         fe.log_model(
             model=pipeline,
             artifact_path="customer-churn-model",
@@ -165,20 +156,19 @@ try:
         logger.info(f"Model URI: runs:/{run_id}/customer-churn-model")
 
         # Set task value for workflow coordination
-        dbutils.jobs.taskValues.set(key="model_uri", value=f"runs:/{run_id}/customer-churn-model")
-        dbutils.jobs.taskValues.set(key="auc_score", value=auc_score)
+        set_task_value_safe(key="model_uri", value=f"runs:/{run_id}/customer-churn-model")
+        set_task_value_safe(key="auc_score", value=auc_score)
 
     logger.info("Model training workflow completed successfully.")
 
 except FileNotFoundError as e:
     logger.error(f"Configuration or data file not found: {str(e)}")
-    logger.error(traceback.format_exc())
+    log_workflow_failure("model training workflow", e)
     sys.exit(1)
 except ValueError as e:
     logger.error(f"Invalid value in model training: {str(e)}")
-    logger.error(traceback.format_exc())
+    log_workflow_failure("model training workflow", e)
     sys.exit(1)
 except Exception as e:
-    logger.error(f"Unexpected error in model training workflow: {type(e).__name__}: {str(e)}")
-    logger.error(f"Full traceback:\n{traceback.format_exc()}")
+    log_workflow_failure("model training workflow", e)
     sys.exit(1)

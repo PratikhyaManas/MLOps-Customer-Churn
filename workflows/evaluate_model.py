@@ -8,45 +8,40 @@ Key functionality:
 - Determines if model should be deployed
 """
 
-import argparse
 import sys
-import traceback
 
 import mlflow
-from databricks.sdk import WorkspaceClient
 from loguru import logger
-from pyspark.sql import SparkSession
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 
-from customer_churn.utils import load_config, setup_logging
+from customer_churn.utils import setup_logging
+from customer_churn.workflow_common import (
+    get_task_value_safe,
+    load_workflow_context,
+    log_workflow_failure,
+    parse_common_args,
+    set_task_value_safe,
+)
 
 # Set up logging
 setup_logging(log_file="")
 
 try:
     # Parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root_path", action="store", default=None, type=str, required=True)
-    parser.add_argument("--git_sha", action="store", default=None, type=str, required=True)
-    parser.add_argument("--job_run_id", action="store", default=None, type=str, required=True)
-    args = parser.parse_args()
+    args = parse_common_args(require_git_metadata=True)
 
     root_path = args.root_path
     logger.info("Parsed arguments successfully.")
 
     # Load configuration
     logger.info("Loading configuration...")
-    config_path = f"{root_path}/project_config.yml"
-    config = load_config(config_path)
+    config, _, spark = load_workflow_context(root_path, with_workspace=False)
     logger.info("Configuration loaded successfully.")
 
-    # Initialize clients
-    workspace = WorkspaceClient()
-    spark = SparkSession.builder.getOrCreate()
-    logger.info("Clients initialized.")
+    logger.info("Databricks clients initialized.")
 
     # Get model URI from previous task
-    model_uri = dbutils.jobs.taskValues.get(taskKey="train_model", key="model_uri")
+    model_uri = get_task_value_safe(task_key="train_model", key="model_uri")
     logger.info(f"Retrieved model URI: {model_uri}")
 
     # Load test data
@@ -71,7 +66,7 @@ try:
     f1 = f1_score(y_test, y_pred)
     auc = roc_auc_score(y_test, y_pred_proba)
 
-    logger.info(f"Evaluation Metrics:")
+    logger.info("Evaluation Metrics:")
     logger.info(f"  Accuracy: {accuracy:.4f}")
     logger.info(f"  Precision: {precision:.4f}")
     logger.info(f"  Recall: {recall:.4f}")
@@ -79,28 +74,27 @@ try:
     logger.info(f"  AUC: {auc:.4f}")
 
     # Set task values
-    dbutils.jobs.taskValues.set(key="accuracy", value=accuracy)
-    dbutils.jobs.taskValues.set(key="precision", value=precision)
-    dbutils.jobs.taskValues.set(key="recall", value=recall)
-    dbutils.jobs.taskValues.set(key="f1_score", value=f1)
-    dbutils.jobs.taskValues.set(key="auc_score", value=auc)
+    set_task_value_safe(key="accuracy", value=accuracy)
+    set_task_value_safe(key="precision", value=precision)
+    set_task_value_safe(key="recall", value=recall)
+    set_task_value_safe(key="f1_score", value=f1)
+    set_task_value_safe(key="auc_score", value=auc)
 
     # Determine if model should be deployed (e.g., AUC > 0.75)
     deploy_threshold = 0.75
     should_deploy = 1 if auc >= deploy_threshold else 0
-    dbutils.jobs.taskValues.set(key="should_deploy", value=should_deploy)
+    set_task_value_safe(key="should_deploy", value=should_deploy)
 
     logger.info(f"Model evaluation completed. Should deploy: {should_deploy}")
 
 except FileNotFoundError as e:
     logger.error(f"Model or configuration file not found: {str(e)}")
-    logger.error(traceback.format_exc())
+    log_workflow_failure("model evaluation workflow", e)
     sys.exit(1)
 except ValueError as e:
     logger.error(f"Invalid model or metric value: {str(e)}")
-    logger.error(traceback.format_exc())
+    log_workflow_failure("model evaluation workflow", e)
     sys.exit(1)
 except Exception as e:
-    logger.error(f"Unexpected error in model evaluation workflow: {type(e).__name__}: {str(e)}")
-    logger.error(f"Full traceback:\n{traceback.format_exc()}")
+    log_workflow_failure("model evaluation workflow", e)
     sys.exit(1)

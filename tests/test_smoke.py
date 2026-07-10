@@ -2,7 +2,7 @@
 
 import pytest
 
-from customer_churn.deployment_validator import DeploymentValidator, SmokeTestRunner
+from customer_churn.deployment_validator import DeploymentValidator
 from customer_churn.health_checks import HealthChecker
 from customer_churn.secrets_manager import validate_environment
 
@@ -13,7 +13,7 @@ class TestDeploymentReadiness:
     def test_pre_deployment_validation(self):
         """Test that all pre-deployment checks pass."""
         validator = DeploymentValidator()
-        result = validator.validate_all(code_coverage_threshold=0.70)
+        validator.validate_all(code_coverage_threshold=0.70)
         assert validator.can_deploy(), "Deployment blocked by validation errors"
 
     def test_configuration_files_exist(self):

@@ -58,7 +58,7 @@ def test_get_processed_data(sample_data, sample_config):
     """Test getting processed data"""
     preprocessor = DataPreprocessor(sample_data, sample_config)
     X, y, prep = preprocessor.get_processed_data()
-    
+
     assert X is not None
     assert y is not None
     assert prep is not None
@@ -69,7 +69,7 @@ def test_preprocessor_shapes(sample_data, sample_config):
     """Test that preprocessor returns correct shapes"""
     preprocessor = DataPreprocessor(sample_data, sample_config)
     X, y, _ = preprocessor.get_processed_data()
-    
+
     assert X.shape[0] == 10  # Number of rows
     assert len(y) == 10  # Target length
     assert "churn_label" not in X.columns  # Target should not be in features
@@ -79,7 +79,7 @@ def test_feature_columns(sample_data, sample_config):
     """Test that correct feature columns are present"""
     preprocessor = DataPreprocessor(sample_data, sample_config)
     X, _, _ = preprocessor.get_processed_data()
-    
+
     expected_features = ["customer_id", "tenure", "monthly_charges", "total_charges"]
     for feature in expected_features:
         assert feature in X.columns
